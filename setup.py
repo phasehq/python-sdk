@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='Phase',
+    name='phase-sdk',
     version='0.0.1',
     description='Python SDK for Phase',
     url="https://phase.dev",
