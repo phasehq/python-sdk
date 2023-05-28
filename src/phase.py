@@ -2,7 +2,7 @@ import re
 from nacl.bindings import crypto_kx_server_session_keys, crypto_kx_client_session_keys
 from dataclasses import dataclass
 from src.utils.crypto import decrypt_b64, encrypt_b64, fetch_app_key, random_key_pair, reconstruct_secret
-from .version import __version__, __ph_version__
+from src.version import __version__, __ph_version__
 
 
 @dataclass
