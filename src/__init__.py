@@ -1,3 +1,3 @@
-from sdk import Phase
+from .phase import Phase
 
 __all__ = ['Phase']
