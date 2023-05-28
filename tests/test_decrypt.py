@@ -28,7 +28,7 @@ def test_phase_decrypt_returns_correct_plaintext(phase_instance, monkeypatch):
     assert plaintext == data
 
 
-def test_phase_decrypt_rejects_promise_with_incorrect_app_secret(monkeypatch):
+def test_phase_decrypt_fails_with_incorrect_app_secret(monkeypatch):
     phase = Phase(APP_ID, APP_SECRET_INVALID)
 
     monkeypatch.setattr("src.phase.fetch_app_key", mock_fetch_app_key)
