@@ -4,7 +4,7 @@ SDK to integrate Phase in server-side applications running Python
 
 ## Install
 
-`pip install phase-sdk`
+`pip install phase-dev`
 
 ## Import
 
