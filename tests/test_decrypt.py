@@ -11,7 +11,7 @@ def phase_instance():
     return Phase(APP_ID, APP_SECRET)
 
 
-def mock_fetch_app_key(appToken, wrapKey, appId, dataSize):
+def mock_fetch_app_key(appToken, wrapKey, appId, dataSize, custom_kms_host=None):
     return "e35ae9560207c90fa3dd68a8715e13a1ef988bffa284db73f04328df17f37cfe"
 
 
