@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from .utils.crypto import decrypt_b64, encrypt_b64, fetch_app_key, random_key_pair, reconstruct_secret
 from .version import __version__, __ph_version__
 
+DEFAULT_KMS_HOST = "https://kms.phase.dev"
+
 
 @dataclass
 class AppSecret:
@@ -18,8 +20,9 @@ class Phase:
     _app_id = ''
     _app_pub_key = ''
     _app_secret = None
+    _kms_host = ''
 
-    def __init__(self, app_id, app_secret):
+    def __init__(self, app_id, app_secret, custom_kms_host=None):
         app_id_pattern = re.compile(r"^phApp:v(\d+):([a-fA-F0-9]{64})$")
         app_secret_pattern = re.compile(
             r"^pss:v(\d+):([a-fA-F0-9]{64}):([a-fA-F0-9]{64,128}):([a-fA-F0-9]{64})$")
@@ -32,9 +35,10 @@ class Phase:
 
         self._app_id = app_id
         self._app_pub_key = app_id.split(':')[2]
-        app_secret_segments = app_secret.split(':')
 
+        app_secret_segments = app_secret.split(':')
         self._app_secret = AppSecret(*app_secret_segments)
+        self._kms_host = f"{custom_kms_host}/kms" if custom_kms_host else DEFAULT_KMS_HOST
 
     def encrypt(self, plaintext, tag="") -> str | None:
         """
@@ -81,7 +85,7 @@ class Phase:
             client_pub_key = bytes.fromhex(client_pub_key_hex)
 
             keyshare1 = fetch_app_key(
-                self._app_secret.app_token, self._app_secret.keyshare1_unwrap_key, self._app_id, len(ct)/2)
+                self._app_secret.app_token, self._app_secret.keyshare1_unwrap_key, self._app_id, len(ct)/2, self._kms_host)
 
             app_priv_key = reconstruct_secret(
                 [self._app_secret.keyshare0, keyshare1])

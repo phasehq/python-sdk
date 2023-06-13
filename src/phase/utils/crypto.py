@@ -6,9 +6,6 @@ from nacl.bindings import crypto_kx_keypair, crypto_aead_xchacha20poly1305_ietf_
 from ..version import __version__
 
 
-PHASE_KMS_URI = "https://kms.phase.dev/"
-
-
 def xor_bytes(a, b) -> bytes:
     """
     Computes the XOR of two byte arrays byte by byte.
@@ -129,7 +126,7 @@ def decrypt_b64(ct, key) -> bytes:
     return plaintext_bytes.decode('utf-8')
 
 
-def fetch_app_key(appToken, wrapKey, appId, dataSize) -> str:
+def fetch_app_key(appToken, wrapKey, appId, dataSize, host) -> str:
     """
     Fetches the application key share from Phase KMS.
 
@@ -152,7 +149,7 @@ def fetch_app_key(appToken, wrapKey, appId, dataSize) -> str:
         "PhSize": f"{dataSize}"
     }
 
-    response = requests.get(f"{PHASE_KMS_URI}{appId}", headers=headers)
+    response = requests.get(f"{host}/{appId}", headers=headers)
 
     if response.status_code == 404:
         raise Exception("Invalid app token")
