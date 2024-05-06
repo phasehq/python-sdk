@@ -4,7 +4,7 @@ import subprocess
 import webbrowser
 import getpass
 import json
-from ..exceptions import EnvironmentNotFoundException
+from .exceptions import EnvironmentNotFoundException
 from urllib.parse import urlparse
 from typing import Union, List
 from .const import __version__, PHASE_CLOUD_API_HOST, cross_env_pattern, local_ref_pattern
