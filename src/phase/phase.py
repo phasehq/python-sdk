@@ -34,6 +34,14 @@ class Phase:
     _api_host = ''
     _app_secret = None
 
+    @dataclass
+    class PhaseSecret:
+        key: str
+        value: str
+        comment: str
+        path: str
+        tags: List[str]
+
 
     def __init__(self, init=True, pss=None, host=None):
         """
@@ -72,15 +80,14 @@ class Phase:
         return None
 
 
-    def create(self, key_value_pairs: List[Tuple[str, str]], env_name: str, app_name: str, path: str = '/') -> requests.Response:
+    def create(self, secrets: List[PhaseSecret], env_name: str, app_name: str) -> requests.Response:
         """
-        Create secrets in Phase KMS with support for specifying a path.
+        Create secrets in Phase KMS with support for specifying environment and application context.
 
         Args:
-            key_value_pairs (List[Tuple[str, str]]): List of tuples where each tuple contains a key and a value.
+            secrets (List[PhaseSecret]): List of PhaseSecret objects containing key, value, comment, path, and tags.
             env_name (str): The name (or partial name) of the desired environment.
             app_name (str): The name of the application context.
-            path (str, optional): The path under which to store the secrets. Defaults to the root path '/'.
 
         Returns:
             requests.Response: The HTTP response from the Phase KMS.
@@ -99,23 +106,29 @@ class Phase:
         wrapped_salt = environment_key.get("wrapped_salt")
         decrypted_salt = self.decrypt(wrapped_salt)
 
-        secrets = []
-        for key, value in key_value_pairs:
-            encrypted_key = CryptoUtils.encrypt_asymmetric(key, public_key)
-            encrypted_value = CryptoUtils.encrypt_asymmetric(value, public_key)
-            key_digest = CryptoUtils.blake2b_digest(key, decrypted_salt)
+        encrypted_secrets = []
+        for secret in secrets:
+            # Validate and modify the key
+            formatted_key = secret.key.upper().replace(" ", "")
+            if " " in formatted_key:
+                raise ValueError("Secret key cannot contain spaces.")
 
-            secret = {
+            encrypted_key = CryptoUtils.encrypt_asymmetric(formatted_key, public_key)
+            encrypted_value = CryptoUtils.encrypt_asymmetric(secret.value, public_key)
+            encrypted_comment = CryptoUtils.encrypt_asymmetric(secret.comment, public_key)
+            key_digest = CryptoUtils.blake2b_digest(formatted_key, decrypted_salt)
+
+            encrypted_secret = {
                 "key": encrypted_key,
                 "keyDigest": key_digest,
                 "value": encrypted_value,
-                "path": path,
-                "tags": [], # TODO: Implement tags and comments creation
-                "comment": ""
+                "path": secret.path,
+                "tags": secret.tags,
+                "comment": encrypted_comment
             }
-            secrets.append(secret)
+            encrypted_secrets.append(encrypted_secret)
 
-        return create_phase_secrets(self._token_type, self._app_secret.app_token, env_id, secrets, self._api_host)
+        return create_phase_secrets(self._token_type, self._app_secret.app_token, env_id, encrypted_secrets, self._api_host)
 
 
     def get(self, env_name: str, keys: List[str] = None, app_name: str = None, tag: str = None, path: str = '') -> List[Dict]:
