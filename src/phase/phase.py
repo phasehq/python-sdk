@@ -1,6 +1,6 @@
 import requests
 from typing import Tuple
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 from .utils.network import (
     fetch_phase_user,
@@ -41,6 +41,7 @@ class Phase:
         comment: str
         path: str
         tags: List[str]
+        overridden: bool
 
 
     def __init__(self, init=True, pss=None, host=None):
@@ -131,7 +132,7 @@ class Phase:
         return create_phase_secrets(self._token_type, self._app_secret.app_token, env_id, encrypted_secrets, self._api_host)
 
 
-    def get(self, env_name: str, keys: List[str] = None, app_name: str = None, tag: str = None, path: str = '') -> List[Dict]:
+    def get(self, env_name: str, keys: List[str] = None, app_name: str = None, tag: str = None, path: str = '') -> List[PhaseSecret]:
         """
         Get secrets from Phase KMS based on key and environment, with support for personal overrides,
         optional tag matching, decrypting comments, and now including path support and key digest optimization.
@@ -144,7 +145,7 @@ class Phase:
             path (str, optional): The path under which to fetch secrets, default is root.
 
         Returns:
-            List[Dict]: A list of dictionaries for all secrets in the environment that match the criteria, including their paths.
+            List[PhaseSecret]: A list of PhaseSecret objects for all secrets in the environment that match the criteria.
         """
         
         user_response = fetch_phase_user(self._token_type, self._app_secret.app_token, self._api_host)
@@ -194,20 +195,20 @@ class Phase:
             decrypted_value = CryptoUtils.decrypt_asymmetric(value_to_decrypt, env_private_key, public_key)
             decrypted_comment = CryptoUtils.decrypt_asymmetric(comment_to_decrypt, env_private_key, public_key) if comment_to_decrypt else None
 
-            result = {
-                "key": decrypted_key,
-                "value": decrypted_value,
-                "overridden": use_override,
-                "tags": secret.get("tags", []),
-                "comment": decrypted_comment,
-                "path": secret.get("path", "/"),
-                "application": app_name,
-                "environment": env_name 
-            }
+            override_info = secret.get("override", {})
+            is_active_override = override_info.get("is_active", False) if override_info else False
 
-            # Only add the secret to results if the requested keys are not specified or the decrypted key is one of the requested keys.
+            secret_obj = self.PhaseSecret(
+                key=decrypted_key,
+                value=decrypted_value,
+                comment=decrypted_comment,
+                path=secret.get("path", "/"),
+                tags=secret.get("tags", []),
+                overridden=is_active_override
+            )
+
             if not keys or decrypted_key in keys:
-                results.append(result)
+                results.append(secret_obj)
 
         return results
 
