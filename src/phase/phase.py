@@ -213,16 +213,14 @@ class Phase:
         return results
 
 
-    def update(self, env_name: str, key: str, value: str, app_name: str = None, source_path: str = '', destination_path: str = None) -> str:
+    def update(self, secret: PhaseSecret, env_name: str, app_name: str = None, destination_path: str = None) -> str:
         """
-        Update a secret in Phase KMS based on key and environment, with support for source and destination paths.
+        Update a secret in Phase KMS based on key and environment, with support for changing its path.
         
         Args:
+            secret (PhaseSecret): The secret object containing updated values.
             env_name (str): The name (or partial name) of the desired environment.
-            key (str): The key for which to update the secret value.
-            value (str): The new value for the secret.
             app_name (str, optional): The name of the desired application.
-            source_path (str, optional): The current path of the secret. Defaults to root path '/'.
             destination_path (str, optional): The new path for the secret, if changing its location. If not provided, the path is not updated.
                 
         Returns:
@@ -240,8 +238,7 @@ class Phase:
         if environment_key is None:
             raise ValueError(f"No environment found with id: {env_id}")
 
-        # Fetch secrets from the specified source path
-        secrets_response = fetch_phase_secrets(self._token_type, self._app_secret.app_token, env_id, self._api_host, path=source_path)
+        secrets_response = fetch_phase_secrets(self._token_type, self._app_secret.app_token, env_id, self._api_host, path=secret.path)
         secrets_data = secrets_response.json()
 
         wrapped_seed = environment_key.get("wrapped_seed")
@@ -249,24 +246,25 @@ class Phase:
         key_pair = CryptoUtils.env_keypair(decrypted_seed)
         env_private_key = key_pair['privateKey']
 
-        matching_secret = next((secret for secret in secrets_data if CryptoUtils.decrypt_asymmetric(secret["key"], env_private_key, public_key) == key), None)
+        matching_secret = next((s for s in secrets_data if CryptoUtils.decrypt_asymmetric(s["key"], env_private_key, public_key) == secret.key), None)
         if not matching_secret:
-            return f"Key '{key}' doesn't exist in path '{source_path}'."
+            return f"Key '{secret.key}' doesn't exist in path '{secret.path}'."
 
-        encrypted_key = CryptoUtils.encrypt_asymmetric(key, public_key)
-        encrypted_value = CryptoUtils.encrypt_asymmetric(value, public_key)
-        
+        encrypted_key = CryptoUtils.encrypt_asymmetric(secret.key, public_key)
+        encrypted_value = CryptoUtils.encrypt_asymmetric(secret.value, public_key)
+        encrypted_comment = CryptoUtils.encrypt_asymmetric(secret.comment, public_key) if secret.comment else ""
+
         wrapped_salt = environment_key.get("wrapped_salt")
         decrypted_salt = self.decrypt(wrapped_salt)
-        key_digest = CryptoUtils.blake2b_digest(key, decrypted_salt)
+        key_digest = CryptoUtils.blake2b_digest(secret.key, decrypted_salt)
 
         secret_update_payload = {
             "id": matching_secret["id"],
             "key": encrypted_key,
             "keyDigest": key_digest,
             "value": encrypted_value,
-            "tags": matching_secret.get("tags", []), # TODO: Implement tags and comments updates
-            "comment": matching_secret.get("comment", ""),
+            "tags": secret.tags,
+            "comment": encrypted_comment,
             "path": destination_path if destination_path is not None else matching_secret["path"]
         }
 
