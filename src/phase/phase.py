@@ -105,7 +105,7 @@ class Phase:
             raise ValueError(f"No environment found with id: {env_id}")
 
         wrapped_salt = environment_key.get("wrapped_salt")
-        decrypted_salt = self.decrypt(wrapped_salt)
+        decrypted_salt = self._decrypt(wrapped_salt)
 
         encrypted_secrets = []
         for secret in secrets:
@@ -160,14 +160,14 @@ class Phase:
             raise ValueError("No environment found with id: {}".format(env_id))
 
         wrapped_seed = environment_key.get("wrapped_seed")
-        decrypted_seed = self.decrypt(wrapped_seed)
+        decrypted_seed = self._decrypt(wrapped_seed)
         key_pair = CryptoUtils.env_keypair(decrypted_seed)
         env_private_key = key_pair['privateKey']
 
         params = {"path": path}
         if keys and len(keys) == 1:
             wrapped_salt = environment_key.get("wrapped_salt")
-            decrypted_salt = self.decrypt(wrapped_salt)
+            decrypted_salt = self._decrypt(wrapped_salt)
             key_digest = CryptoUtils.blake2b_digest(keys[0], decrypted_salt)
             params["key_digest"] = key_digest
 
@@ -242,7 +242,7 @@ class Phase:
         secrets_data = secrets_response.json()
 
         wrapped_seed = environment_key.get("wrapped_seed")
-        decrypted_seed = self.decrypt(wrapped_seed)
+        decrypted_seed = self._decrypt(wrapped_seed)
         key_pair = CryptoUtils.env_keypair(decrypted_seed)
         env_private_key = key_pair['privateKey']
 
@@ -255,7 +255,7 @@ class Phase:
         encrypted_comment = CryptoUtils.encrypt_asymmetric(secret.comment, public_key) if secret.comment else ""
 
         wrapped_salt = environment_key.get("wrapped_salt")
-        decrypted_salt = self.decrypt(wrapped_salt)
+        decrypted_salt = self._decrypt(wrapped_salt)
         key_digest = CryptoUtils.blake2b_digest(secret.key, decrypted_salt)
 
         secret_update_payload = {
@@ -302,7 +302,7 @@ class Phase:
             raise ValueError(f"No environment found with id: {env_id}")
 
         wrapped_seed = environment_key.get("wrapped_seed")
-        decrypted_seed = self.decrypt(wrapped_seed)
+        decrypted_seed = self._decrypt(wrapped_seed)
         key_pair = CryptoUtils.env_keypair(decrypted_seed)
         env_private_key = key_pair['privateKey']
 
@@ -330,7 +330,7 @@ class Phase:
         return keys_not_found
     
 
-    def decrypt(self, phase_ciphertext) -> str | None:
+    def _decrypt(self, phase_ciphertext) -> str | None:
         """
         Decrypts a Phase ciphertext string.
 
