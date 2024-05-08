@@ -91,7 +91,7 @@ class Phase:
             app_name (str): The name of the application context.
 
         Returns:
-            requests.Response: The HTTP response from the Phase KMS.
+            requests.Response: The HTTP response from the Phase API.
         """
         user_response = fetch_phase_user(self._token_type, self._app_secret.app_token, self._api_host)
         if user_response.status_code != 200:
