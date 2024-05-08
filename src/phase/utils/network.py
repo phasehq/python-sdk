@@ -90,7 +90,7 @@ def fetch_phase_user(token_type: str, app_token: str, host: str) -> requests.Res
         app_token (str): The token for the application.
 
     Returns:
-        requests.Response: The HTTP response from the Phase KMS.
+        requests.Response: The HTTP response from the Phase API.
     """
 
     headers = construct_http_headers(token_type, app_token)
@@ -108,7 +108,7 @@ def fetch_phase_user(token_type: str, app_token: str, host: str) -> requests.Res
 
 def fetch_app_key(token_type: str, app_token, host) -> str:
     """
-    Fetches the application key share from Phase KMS.
+    Fetches the application key share from Phase API.
 
     Args:
         app_token (str): The token for the application to retrieve the key for.
@@ -146,7 +146,7 @@ def fetch_app_key(token_type: str, app_token, host) -> str:
 
 def fetch_wrapped_key_share(token_type: str, app_token: str, host: str) -> str:
     """
-    Fetches the wrapped application key share from Phase KMS.
+    Fetches the wrapped application key share from Phase API.
 
     Args:
         token_type (str): The type of token being used, either "user" or "service".
@@ -186,7 +186,7 @@ def fetch_wrapped_key_share(token_type: str, app_token: str, host: str) -> str:
 
 def fetch_phase_secrets(token_type: str, app_token: str, id: str, host: str, key_digest: str = '', path: str = '') -> requests.Response:
     """
-    Fetch a single secret from Phase KMS based on key digest, with an optional path parameter.
+    Fetch a single secret from Phase API based on key digest, with an optional path parameter.
 
     Args:
         token_type (str): The type of the token.
@@ -197,7 +197,7 @@ def fetch_phase_secrets(token_type: str, app_token: str, id: str, host: str, key
         path (str, optional): A specific path to fetch secrets from.
 
     Returns:
-        dict: The single secret fetched from the Phase KMS, or an error message.
+        dict: The single secret fetched from the Phase API, or an error message.
     """
 
     headers = {**construct_http_headers(token_type, app_token), "Environment": id, "KeyDigest": key_digest}
@@ -218,7 +218,7 @@ def fetch_phase_secrets(token_type: str, app_token: str, id: str, host: str, key
 
 def create_phase_secrets(token_type: str, app_token: str, environment_id: str, secrets: List[dict], host: str) -> requests.Response:
     """
-    Create secrets in Phase KMS through HTTP POST request.
+    Create secrets in Phase API through HTTP POST request.
 
     Args:
         app_token (str): The token for the application.
@@ -226,7 +226,7 @@ def create_phase_secrets(token_type: str, app_token: str, environment_id: str, s
         secrets (List[dict]): The list of secrets to be created.
 
     Returns:
-        requests.Response: The HTTP response from the Phase KMS.
+        requests.Response: The HTTP response from the Phase API.
     """
 
     headers = {**construct_http_headers(token_type, app_token), "Environment": environment_id}
@@ -249,7 +249,7 @@ def create_phase_secrets(token_type: str, app_token: str, environment_id: str, s
 
 def update_phase_secrets(token_type: str, app_token: str, environment_id: str, secrets: List[dict], host: str) -> requests.Response:
     """
-    Update secrets in Phase KMS through HTTP PUT request.
+    Update secrets in Phase API through HTTP PUT request.
 
     Args:
         app_token (str): The token for the application.
@@ -257,7 +257,7 @@ def update_phase_secrets(token_type: str, app_token: str, environment_id: str, s
         secrets (List[dict]): The list of secrets to be updated.
 
     Returns:
-        requests.Response: The HTTP response from the Phase KMS.
+        requests.Response: The HTTP response from the Phase API.
     """
 
     headers = {**construct_http_headers(token_type, app_token), "Environment": environment_id}
@@ -280,7 +280,7 @@ def update_phase_secrets(token_type: str, app_token: str, environment_id: str, s
 
 def delete_phase_secrets(token_type: str, app_token: str, environment_id: str, secret_ids: List[str], host: str) -> requests.Response:
     """
-    Delete secrets from Phase KMS.
+    Delete secrets from Phase API.
 
     Args:
         app_token (str): The token for the application.
@@ -288,7 +288,7 @@ def delete_phase_secrets(token_type: str, app_token: str, environment_id: str, s
         secret_ids (List[str]): The list of secret IDs to be deleted.
 
     Returns:
-        requests.Response: The HTTP response from the Phase KMS.
+        requests.Response: The HTTP response from the Phase API.
     """
 
     headers = {**construct_http_headers(token_type, app_token), "Environment": environment_id}
