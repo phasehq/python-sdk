@@ -83,7 +83,7 @@ class Phase:
 
     def create(self, secrets: List[PhaseSecret], env_name: str, app_name: str) -> requests.Response:
         """
-        Create secrets in Phase KMS with support for specifying environment and application context.
+        Create one or more secrets in Phase in a specified application and environment.
 
         Args:
             secrets (List[PhaseSecret]): List of PhaseSecret objects containing key, value, comment, path, and tags.
@@ -134,8 +134,8 @@ class Phase:
 
     def get(self, env_name: str, keys: List[str] = None, app_name: str = None, tag: str = None, path: str = '') -> List[PhaseSecret]:
         """
-        Get secrets from Phase KMS based on key and environment, with support for personal overrides,
-        optional tag matching, decrypting comments, and now including path support and key digest optimization.
+        Fetch one or more secrets stored in Phase in a specified application and environment.
+        Note: Personal secret overrides are only supported when authenticating with a Personal Access Token (PAT).
 
         Args:
             env_name (str): The name (or partial name) of the desired environment.
@@ -215,7 +215,7 @@ class Phase:
 
     def update(self, secret: PhaseSecret, env_name: str, app_name: str = None, destination_path: str = None) -> str:
         """
-        Update a secret in Phase KMS based on key and environment, with support for changing its path.
+        Update a secret in Phase in a given application and environment.
         
         Args:
             secret (PhaseSecret): The secret object containing updated values.
@@ -278,7 +278,7 @@ class Phase:
 
     def delete(self, env_name: str, keys_to_delete: List[str], app_name: str = None, path: str = None) -> List[str]:
         """
-        Delete secrets in Phase KMS based on keys and environment, with optional path support.
+        Delete one or more secrets stored in Phase in a given application and environment.
         
         Args:
             env_name (str): The name (or partial name) of the desired environment.
