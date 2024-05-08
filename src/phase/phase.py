@@ -276,7 +276,7 @@ class Phase:
             return f"Error: Failed to update secret. HTTP Status Code: {response.status_code}"
 
 
-    def delete(self, env_name: str, keys_to_delete: List[str], app_name: str = None, path: str = None) -> List[str]:
+    def delete(self, env_name: str, keys_to_delete: List[str], app_name: str = None, path: str = None) -> dict:
         """
         Delete one or more secrets stored in Phase in a given application and environment.
         
@@ -287,7 +287,9 @@ class Phase:
             path (str, optional): The path within which to delete the secrets. If specified, only deletes secrets within this path.
                 
         Returns:
-            List[str]: A list of keys that were not found and could not be deleted.
+            dict: A dictionary with two keys:
+                'deleted': List of keys that were successfully deleted.
+                'not_found': List of keys that were not found.
         """
         
         user_response = fetch_phase_user(self._token_type, self._app_secret.app_token, self._api_host)
@@ -325,10 +327,13 @@ class Phase:
                 keys_not_found.append(key)
 
         if secret_ids_to_delete:
-            delete_phase_secrets(self._token_type, self._app_secret.app_token, env_id, secret_ids_to_delete, self._api_host)
-            
-        return keys_not_found
-    
+            delete_response = delete_phase_secrets(self._token_type, self._app_secret.app_token, env_id, secret_ids_to_delete, self._api_host)
+            if delete_response.status_code != 200:
+                raise ValueError(f"Failed to delete secrets: {delete_response.text}")
+
+        # Provide detailed results
+        return {'deleted': [key for key in keys_to_delete if key not in keys_not_found], 'not_found': keys_not_found}
+
 
     def _decrypt(self, phase_ciphertext) -> str | None:
         """
