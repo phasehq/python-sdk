@@ -1,3 +1,3 @@
-from .phase import Phase
+from .phase import Secrets
 
-__all__ = ['Phase']
+__all__ = ['Secrets']
