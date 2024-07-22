@@ -25,11 +25,6 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-      - name: Print directory structure
-        run: |
-          pwd
-          ls -R
-
       - name: Run pytest
         run: |
           python -m pytest -v tests/
