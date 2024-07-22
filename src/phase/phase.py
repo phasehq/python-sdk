@@ -29,7 +29,7 @@ class AppSecret:
     keyshare1_unwrap_key: str
 
 
-class Phase:
+class Secrets:
     _app_pub_key = ''
     _api_host = ''
     _app_secret = None
@@ -312,11 +312,16 @@ class Phase:
         keys_not_found = []
         secrets_response = fetch_phase_secrets(self._token_type, self._app_secret.app_token, env_id, self._api_host, path=path)
         secrets_data = secrets_response.json()
+        
+        # Normalize the provided path
+        normalized_path = path.rstrip('/') + '/' if path else '/'
             
         for key in keys_to_delete:
             found = False
             for secret in secrets_data:
-                if path is not None and secret.get("path", "/") != path:
+                # Normalize the secret's path
+                secret_path = secret.get("path", "/").rstrip('/') + '/'
+                if normalized_path != secret_path:
                     continue  # Skip secrets not in the specified path
                 decrypted_key = CryptoUtils.decrypt_asymmetric(secret["key"], env_private_key, public_key)
                 if decrypted_key == key:
@@ -333,7 +338,6 @@ class Phase:
 
         # Provide detailed results
         return {'deleted': [key for key in keys_to_delete if key not in keys_not_found], 'not_found': keys_not_found}
-
 
     def _decrypt(self, phase_ciphertext) -> str | None:
         """
