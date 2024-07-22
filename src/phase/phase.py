@@ -17,6 +17,7 @@ from nacl.bindings import (
 from .utils.crypto import CryptoUtils
 from .utils.const import __ph_version__, pss_user_pattern, pss_service_pattern
 from .utils.misc import phase_get_context, normalize_tag, tag_matches
+from .utils.secret_referencing import resolve_all_secrets
 
 
 @dataclass
@@ -176,6 +177,7 @@ class Secrets:
         secrets_data = secrets_response.json()
 
         results = []
+        all_secrets = []  # List to store all secrets for resolving references
         for secret in secrets_data:
             # Check if a tag filter is applied and if the secret has the correct tags.
             if tag and not tag_matches(secret.get("tags", []), tag):
@@ -209,6 +211,13 @@ class Secrets:
 
             if not keys or decrypted_key in keys:
                 results.append(secret_obj)
+            
+            all_secrets.append(secret_obj)
+
+        # Resolve secret references
+        for secret in results:
+            resolved_value = resolve_all_secrets(secret.value, all_secrets, self, app_name, env_name)
+            secret.value = resolved_value
 
         return results
 
