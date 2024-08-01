@@ -11,7 +11,7 @@ pip install phase-dev
 ## Import
 
 ```python
-from phase import Secrets
+from phase import Phase, CreateSecretsOptions, GetAllSecretsOptions, GetSecretOptions, SecretUpdateOptions, DeleteSecretOptions
 ```
 
 ## Initialize
@@ -19,9 +19,11 @@ from phase import Secrets
 Initialize the SDK with your host and token:
 
 ```python
-phase = Secrets(
-    host='https://your-phase-host.com', 
+phase = Phase(
+    init=False,
+    host='https://your-phase-host.com',
     pss=PHASE_SERVICE_TOKEN
+
 )
 ```
 
@@ -32,20 +34,17 @@ phase = Secrets(
 Create one or more secrets in a specified application and environment:
 
 ```python
-new_secrets = [
-    phase.PhaseSecret(
-        key="API_KEY",
-        value="your-api-key",
-        comment="API key for our service",
-        path="/",
-        tags=["api", "credentials"],
-        overridden=False
-    ),
-    # Add more secrets as needed
-]
-
-response = phase.create(secrets=new_secrets, env_name="Development", app_name="Your App Name")
-print(f"Create Response Status Code: {response.status_code}")
+create_options = CreateSecretsOptions(
+    env_name="Development",
+    app_name="Your App Name",
+    key_value_pairs=[
+        {"API_KEY": "your-api-key"},
+        {"DB_PASSWORD": "your-db-password"}
+    ],
+    secret_path="/api"
+)
+result = phase.create_secrets(create_options)
+print(f"Create secrets result: {result}")
 ```
 
 ### Get Secrets
@@ -53,15 +52,28 @@ print(f"Create Response Status Code: {response.status_code}")
 Fetch one or more secrets from a specified application and environment:
 
 ```python
-secrets = phase.get(
-    env_name="Development", 
-    keys=["API_KEY"],  # Optional: specify keys to retrieve
+get_options = GetAllSecretsOptions(
+    env_name="Development",
     app_name="Your App Name",
     tag="api",  # Optional: filter by tag
-    path="/"  # Optional: specify path
+    secret_path="/api"  # Optional: specify path
 )
-
+secrets = phase.get_all_secrets(get_options)
 for secret in secrets:
+    print(f"Key: {secret.key}, Value: {secret.value}")
+```
+
+To get a specific secret:
+
+```python
+get_options = GetSecretOptions(
+    env_name="Development",
+    app_name="Your App Name",
+    key_to_find="API_KEY",
+    secret_path="/api"
+)
+secret = phase.get_secret(get_options)
+if secret:
     print(f"Key: {secret.key}, Value: {secret.value}")
 ```
 
@@ -70,38 +82,48 @@ for secret in secrets:
 Update an existing secret in a specified application and environment:
 
 ```python
-updated_secret = phase.PhaseSecret(
+update_options = SecretUpdateOptions(
+    env_name="Development",
+    app_name="Your App Name",
     key="API_KEY",
     value="new-api-key-value",
-    comment="Updated API key",
-    path="/",
-    tags=["api", "credentials", "updated"],
-    overridden=False
+    secret_path="/api",
+    destination_path="/new-api",  # Optional: move secret to a new path
+    override=False,  # Optional: create a personal override
+    toggle_override=False  # Optional: toggle personal override
 )
-
-result = phase.update(
-    secret=updated_secret, 
-    env_name="Development", 
-    app_name="Your App Name"
-)
+result = phase.update_secret(update_options)
 print(f"Update result: {result}")
 ```
 
 ### Delete Secrets
 
-Delete one or more secrets from a specified application and environment:
+Delete a secret from a specified application and environment:
 
 ```python
-keys_to_delete = ["API_KEY", "DB_PASSWORD"]
-result = phase.delete(
+delete_options = DeleteSecretOptions(
     env_name="Development",
-    keys_to_delete=keys_to_delete,
     app_name="Your App Name",
-    path="/"  # Optional: specify path
+    key_to_delete="API_KEY",
+    secret_path="/api"
 )
+result = phase.delete_secret(delete_options)
+print(f"Delete result: {result}")
+```
 
-print(f"Deleted secrets: {result['deleted']}")
-print(f"Secrets not found: {result['not_found']}")
+### Resolve Secret References
+
+Resolve references in secret values:
+
+```python
+get_options = GetAllSecretsOptions(
+    env_name="Development",
+    app_name="Your App Name"
+)
+secrets = phase.get_all_secrets(get_options)
+resolved_secrets = phase.resolve_references(secrets, "Development", "Your App Name")
+for secret in resolved_secrets:
+    print(f"Key: {secret.key}, Resolved Value: {secret.value}")
 ```
 
 ## Error Handling
@@ -110,7 +132,8 @@ The SDK methods may raise exceptions for various error conditions. It's recommen
 
 ```python
 try:
-    secrets = phase.get(env_name="Development", app_name="Your App Name")
+    get_options = GetAllSecretsOptions(env_name="Development", app_name="Your App Name")
+    secrets = phase.get_all_secrets(get_options)
 except ValueError as e:
     print(f"An error occurred: {e}")
 ```
