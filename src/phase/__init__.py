@@ -3,7 +3,7 @@ from .phase import (
     GetSecretOptions,
     GetAllSecretsOptions,
     CreateSecretsOptions,
-    SecretUpdateOptions,
+    UpdateSecretOptions,
     DeleteSecretOptions,
     PhaseSecret
 )
@@ -13,7 +13,7 @@ __all__ = [
     'GetSecretOptions',
     'GetAllSecretsOptions',
     'CreateSecretsOptions',
-    'SecretUpdateOptions',
+    'UpdateSecretOptions',
     'DeleteSecretOptions',
     'PhaseSecret'
 ]

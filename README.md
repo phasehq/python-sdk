@@ -11,7 +11,7 @@ pip install phase-dev
 ## Import
 
 ```python
-from phase import Phase, CreateSecretsOptions, GetAllSecretsOptions, GetSecretOptions, SecretUpdateOptions, DeleteSecretOptions
+from phase import Phase, CreateSecretsOptions, GetAllSecretsOptions, GetSecretOptions, UpdateSecretOptions, DeleteSecretOptions
 ```
 
 ## Initialize
@@ -82,7 +82,7 @@ if secret:
 Update an existing secret in a specified application and environment:
 
 ```python
-update_options = SecretUpdateOptions(
+update_options = UpdateSecretOptions(
     env_name="Development",
     app_name="Your App Name",
     key="API_KEY",

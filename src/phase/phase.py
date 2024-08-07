@@ -26,7 +26,7 @@ class CreateSecretsOptions:
     secret_path: str = "/"
 
 @dataclass
-class SecretUpdateOptions:
+class UpdateSecretOptions:
     env_name: str
     app_name: str
     key: str
@@ -107,7 +107,7 @@ class Phase:
         )
         return "Success" if response.status_code == 200 else f"Error: {response.status_code}"
 
-    def update_secret(self, options: SecretUpdateOptions) -> str:
+    def update_secret(self, options: UpdateSecretOptions) -> str:
         return self._phase_io.update(
             env_name=options.env_name,
             key=options.key,
