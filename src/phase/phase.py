@@ -1,101 +1,152 @@
-import re
-from nacl.bindings import crypto_kx_server_session_keys, crypto_kx_client_session_keys
-from dataclasses import dataclass
-from .utils.crypto import decrypt_b64, encrypt_b64, fetch_app_key, random_key_pair, reconstruct_secret
-from .version import __version__, __ph_version__
-
-DEFAULT_KMS_HOST = "https://kms.phase.dev"
-
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional
+from .utils.phase_io import Phase as PhaseIO
+from .utils.secret_referencing import resolve_all_secrets
 
 @dataclass
-class AppSecret:
-    prefix: str
-    pss_version: str
-    app_token: str
-    keyshare0: str
-    keyshare1_unwrap_key: str
+class GetSecretOptions:
+    env_name: str
+    app_name: str
+    key_to_find: Optional[str] = None
+    tag: Optional[str] = None
+    secret_path: str = "/"
 
+@dataclass
+class GetAllSecretsOptions:
+    env_name: str
+    app_name: str
+    tag: Optional[str] = None
+    secret_path: str = "/"
+
+@dataclass
+class CreateSecretsOptions:
+    env_name: str
+    app_name: str
+    key_value_pairs: List[Dict[str, str]]
+    secret_path: str = "/"
+
+@dataclass
+class UpdateSecretOptions:
+    env_name: str
+    app_name: str
+    key: str
+    value: Optional[str] = None
+    secret_path: str = "/"
+    destination_path: Optional[str] = None
+    override: bool = False
+    toggle_override: bool = False
+
+@dataclass
+class DeleteSecretOptions:
+    env_name: str
+    app_name: str
+    key_to_delete: str
+    secret_path: str = "/"
+
+@dataclass
+class PhaseSecret:
+    key: str
+    value: str
+    comment: str = ""
+    path: str = "/"
+    tags: List[str] = field(default_factory=list)
+    overridden: bool = False
 
 class Phase:
-    _app_id = ''
-    _app_pub_key = ''
-    _app_secret = None
-    _kms_host = ''
+    def __init__(self, init=True, pss=None, host=None):
+        self._phase_io = PhaseIO(init=init, pss=pss, host=host)
 
-    def __init__(self, app_id, app_secret, custom_kms_host=None):
-        app_id_pattern = re.compile(r"^phApp:v(\d+):([a-fA-F0-9]{64})$")
-        app_secret_pattern = re.compile(
-            r"^pss:v(\d+):([a-fA-F0-9]{64}):([a-fA-F0-9]{64,128}):([a-fA-F0-9]{64})$")
+    def get_secret(self, options: GetSecretOptions) -> Optional[PhaseSecret]:
+        secrets = self._phase_io.get(
+            env_name=options.env_name,
+            keys=[options.key_to_find] if options.key_to_find else None,
+            app_name=options.app_name,
+            tag=options.tag,
+            path=options.secret_path
+        )
+        if secrets:
+            secret = secrets[0]
+            return PhaseSecret(
+                key=secret['key'],
+                value=secret['value'],
+                comment=secret.get('comment', ''),
+                path=secret.get('path', '/'),
+                tags=secret.get('tags', []),
+                overridden=secret.get('overridden', False)
+            )
+        return None
 
-        if not app_id_pattern.match(app_id):
-            raise ValueError("Invalid Phase APP_ID")
+    def get_all_secrets(self, options: GetAllSecretsOptions) -> List[PhaseSecret]:
+        secrets = self._phase_io.get(
+            env_name=options.env_name,
+            app_name=options.app_name,
+            tag=options.tag,
+            path=options.secret_path
+        )
+        return [
+            PhaseSecret(
+                key=secret['key'],
+                value=secret['value'],
+                comment=secret.get('comment', ''),
+                path=secret.get('path', '/'),
+                tags=secret.get('tags', []),
+                overridden=secret.get('overridden', False)
+            )
+            for secret in secrets
+        ]
 
-        if not app_secret_pattern.match(app_secret):
-            raise ValueError("Invalid Phase APP_SECRET")
+    def create_secrets(self, options: CreateSecretsOptions) -> str:
+        # Convert the list of dictionaries to a list of tuples
+        key_value_tuples = [(list(item.keys())[0], list(item.values())[0]) for item in options.key_value_pairs]
+        
+        response = self._phase_io.create(
+            key_value_pairs=key_value_tuples,
+            env_name=options.env_name,
+            app_name=options.app_name,
+            path=options.secret_path
+        )
+        return "Success" if response.status_code == 200 else f"Error: {response.status_code}"
 
-        self._app_id = app_id
-        self._app_pub_key = app_id.split(':')[2]
+    def update_secret(self, options: UpdateSecretOptions) -> str:
+        return self._phase_io.update(
+            env_name=options.env_name,
+            key=options.key,
+            value=options.value,
+            app_name=options.app_name,
+            source_path=options.secret_path,
+            destination_path=options.destination_path,
+            override=options.override,
+            toggle_override=options.toggle_override
+        )
 
-        app_secret_segments = app_secret.split(':')
-        self._app_secret = AppSecret(*app_secret_segments)
-        self._kms_host = f"{custom_kms_host}/kms" if custom_kms_host else DEFAULT_KMS_HOST
+    def delete_secret(self, options: DeleteSecretOptions) -> List[str]:
+        return self._phase_io.delete(
+            env_name=options.env_name,
+            keys_to_delete=[options.key_to_delete],
+            app_name=options.app_name,
+            path=options.secret_path
+        )
 
-    def encrypt(self, plaintext, tag="") -> str | None:
-        """
-        Encrypts a plaintext string.
-
-        Args:
-            plaintext (str): The plaintext to encrypt.
-            tag (str, optional): A tag to include in the encrypted message. The tag will not be encrypted.
-
-        Returns:
-            str: The encrypted message, formatted as a string that includes the public key used for the one-time keypair, 
-            the ciphertext, and the tag. Returns `None` if an error occurs.
-        """
-        try:
-            one_time_keypair = random_key_pair()
-            symmetric_keys = crypto_kx_client_session_keys(
-                one_time_keypair[0], one_time_keypair[1], bytes.fromhex(self._app_pub_key))
-            ciphertext = encrypt_b64(plaintext, symmetric_keys[1])
-            pub_key = one_time_keypair[0].hex()
-
-            return f"ph:{__ph_version__}:{pub_key}:{ciphertext}:{tag}"
-        except ValueError as err:
-            raise ValueError(f"Something went wrong: {err}")
-
-    def decrypt(self, phase_ciphertext) -> str | None:
-        """
-        Decrypts a Phase ciphertext string.
-
-        Args:
-            phase_ciphertext (str): The encrypted message to decrypt.
-
-        Returns:
-            str: The decrypted plaintext as a string. Returns `None` if an error occurs.
-
-        Raises:
-            ValueError: If the ciphertext is not in the expected format (e.g. wrong prefix, wrong number of fields).
-        """
-
-        try:
-            [prefix, version, client_pub_key_hex, ct,
-                tag] = phase_ciphertext.split(':')
-            if prefix != 'ph' or len(phase_ciphertext.split(':')) != 5:
-                raise ValueError('Ciphertext is invalid')
-            client_pub_key = bytes.fromhex(client_pub_key_hex)
-
-            keyshare1 = fetch_app_key(
-                self._app_secret.app_token, self._app_secret.keyshare1_unwrap_key, self._app_id, len(ct)/2, self._kms_host)
-
-            app_priv_key = reconstruct_secret(
-                [self._app_secret.keyshare0, keyshare1])
-
-            session_keys = crypto_kx_server_session_keys(bytes.fromhex(
-                self._app_pub_key), bytes.fromhex(app_priv_key), client_pub_key)
-
-            plaintext = decrypt_b64(ct, session_keys[0].hex())
-
-            return plaintext
-
-        except ValueError as err:
-            raise ValueError(f"Something went wrong: {err}")
+    def resolve_references(self, secrets: List[PhaseSecret], env_name: str, app_name: str) -> List[PhaseSecret]:
+        all_secrets = [
+            {
+                'environment': env_name,
+                'application': app_name,
+                'key': secret.key,
+                'value': secret.value,
+                'path': secret.path
+            }
+            for secret in secrets
+        ]
+        
+        for secret in secrets:
+            resolved_value = resolve_all_secrets(
+                secret.value, 
+                all_secrets, 
+                self._phase_io, 
+                app_name, 
+                env_name
+            )
+            secret.value = resolved_value
+        
+        return secrets
