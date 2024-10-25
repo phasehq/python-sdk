@@ -42,7 +42,7 @@ def get_default_user_token() -> str:
     raise ValueError("Default user not found in the config file.")
 
 
-def phase_get_context(user_data, app_name=None, env_name=None):
+def phase_get_context(user_data, app_name=None, env_name=None, app_id=None):
     """
     Get the context (ID, name, and publicKey) for a specified application and environment or the default application and environment.
 
@@ -50,6 +50,7 @@ def phase_get_context(user_data, app_name=None, env_name=None):
     - user_data (dict): The user data from the API response.
     - app_name (str, optional): The name (or partial name) of the desired application.
     - env_name (str, optional): The name (or partial name) of the desired environment.
+    - app_id (str, optional): The explicit application ID to use. Takes precedence over app_name if both are provided.
 
     Returns:
     - tuple: A tuple containing the application's name, application's ID, environment's name, environment's ID, and publicKey.
@@ -57,29 +58,27 @@ def phase_get_context(user_data, app_name=None, env_name=None):
     Raises:
     - ValueError: If no matching application or environment is found.
     """
-
-    # 2. If env_name isn't explicitly provided, use the default
+    # 1. Set default environment name
     default_env_name = "Development"
-    app_id = None
     env_name = env_name or default_env_name
 
-    # 3. Match the application using app_id or find the best match for partial app_name
+    # 2. Match the application using app_id first, then fall back to app_name if app_id is not provided
     try:
-        if app_name:
+        if app_id:  # app_id takes precedence
+            application = next((app for app in user_data["apps"] if app["id"] == app_id), None)
+            if not application:
+                raise ValueError(f"🔍 No application found with ID: '{app_id}'.")
+        elif app_name:  # only check app_name if app_id is not provided
             matching_apps = [app for app in user_data["apps"] if app_name.lower() in app["name"].lower()]
             if not matching_apps:
                 raise ValueError(f"🔍 No application found with the name '{app_name}'.")
             # Sort matching applications by the length of their names, shorter names are likely to be more specific matches
             matching_apps.sort(key=lambda app: len(app["name"]))
             application = matching_apps[0]
-        elif app_id:
-            application = next((app for app in user_data["apps"] if app["id"] == app_id), None)
-            if not application:
-                raise ValueError(f"🔍 No application found with the name '{app_name_from_config}' and ID: '{app_id}'.")
         else:
-            raise ValueError("🤔 No application context provided. Please run 'phase init' or pass the '--app' flag followed by your application name.")
+            raise ValueError("🤔 No application context provided. Please provide either app_name or app_id.")
 
-        # 4. Attempt to match environment with the exact name or a name that contains the env_name string
+        # 3. Attempt to match environment with the exact name or a name that contains the env_name string
         environment = next((env for env in application["environment_keys"] if env_name.lower() in env["environment"]["name"].lower()), None)
 
         if not environment:
