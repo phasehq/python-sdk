@@ -10,6 +10,7 @@ class GetSecretOptions:
     key_to_find: Optional[str] = None
     tag: Optional[str] = None
     secret_path: str = "/"
+    app_id: Optional[str] = None
 
 @dataclass
 class GetAllSecretsOptions:
@@ -17,6 +18,7 @@ class GetAllSecretsOptions:
     app_name: str
     tag: Optional[str] = None
     secret_path: str = "/"
+    app_id: Optional[str] = None
 
 @dataclass
 class CreateSecretsOptions:
@@ -24,6 +26,7 @@ class CreateSecretsOptions:
     app_name: str
     key_value_pairs: List[Dict[str, str]]
     secret_path: str = "/"
+    app_id: Optional[str] = None
 
 @dataclass
 class UpdateSecretOptions:
@@ -35,6 +38,7 @@ class UpdateSecretOptions:
     destination_path: Optional[str] = None
     override: bool = False
     toggle_override: bool = False
+    app_id: Optional[str] = None
 
 @dataclass
 class DeleteSecretOptions:
@@ -42,6 +46,7 @@ class DeleteSecretOptions:
     app_name: str
     key_to_delete: str
     secret_path: str = "/"
+    app_id: Optional[str] = None
 
 @dataclass
 class PhaseSecret:
@@ -61,6 +66,7 @@ class Phase:
             env_name=options.env_name,
             keys=[options.key_to_find] if options.key_to_find else None,
             app_name=options.app_name,
+            app_id=options.app_id,
             tag=options.tag,
             path=options.secret_path
         )
@@ -80,6 +86,7 @@ class Phase:
         secrets = self._phase_io.get(
             env_name=options.env_name,
             app_name=options.app_name,
+            app_id=options.app_id,
             tag=options.tag,
             path=options.secret_path
         )
@@ -103,6 +110,7 @@ class Phase:
             key_value_pairs=key_value_tuples,
             env_name=options.env_name,
             app_name=options.app_name,
+            app_id=options.app_id,
             path=options.secret_path
         )
         return "Success" if response.status_code == 200 else f"Error: {response.status_code}"
@@ -113,6 +121,7 @@ class Phase:
             key=options.key,
             value=options.value,
             app_name=options.app_name,
+            app_id=options.app_id,
             source_path=options.secret_path,
             destination_path=options.destination_path,
             override=options.override,
@@ -124,6 +133,7 @@ class Phase:
             env_name=options.env_name,
             keys_to_delete=[options.key_to_delete],
             app_name=options.app_name,
+            app_id=options.app_id,
             path=options.secret_path
         )
 
