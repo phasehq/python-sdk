@@ -6,47 +6,67 @@ from .utils.secret_referencing import resolve_all_secrets
 @dataclass
 class GetSecretOptions:
     env_name: str
-    app_name: str
+    app_name: Optional[str] = None
+    app_id: Optional[str] = None
     key_to_find: Optional[str] = None
     tag: Optional[str] = None
     secret_path: str = "/"
-    app_id: Optional[str] = None
+
+    def __post_init__(self):
+        if not self.app_name and not self.app_id:
+            raise ValueError("Either app_name or app_id must be provided")
 
 @dataclass
 class GetAllSecretsOptions:
     env_name: str
-    app_name: str
+    app_name: Optional[str] = None
+    app_id: Optional[str] = None
     tag: Optional[str] = None
     secret_path: str = "/"
-    app_id: Optional[str] = None
+
+    def __post_init__(self):
+        if not self.app_name and not self.app_id:
+            raise ValueError("Either app_name or app_id must be provided")
 
 @dataclass
 class CreateSecretsOptions:
     env_name: str
-    app_name: str
     key_value_pairs: List[Dict[str, str]]
-    secret_path: str = "/"
+    app_name: Optional[str] = None
     app_id: Optional[str] = None
+    secret_path: str = "/"
+
+    def __post_init__(self):
+        if not self.app_name and not self.app_id:
+            raise ValueError("Either app_name or app_id must be provided")
 
 @dataclass
 class UpdateSecretOptions:
     env_name: str
-    app_name: str
     key: str
     value: Optional[str] = None
+    app_name: Optional[str] = None
+    app_id: Optional[str] = None
     secret_path: str = "/"
     destination_path: Optional[str] = None
     override: bool = False
     toggle_override: bool = False
-    app_id: Optional[str] = None
+
+    def __post_init__(self):
+        if not self.app_name and not self.app_id:
+            raise ValueError("Either app_name or app_id must be provided")
 
 @dataclass
 class DeleteSecretOptions:
     env_name: str
-    app_name: str
     key_to_delete: str
-    secret_path: str = "/"
+    app_name: Optional[str] = None
     app_id: Optional[str] = None
+    secret_path: str = "/"
+
+    def __post_init__(self):
+        if not self.app_name and not self.app_id:
+            raise ValueError("Either app_name or app_id must be provided")
 
 @dataclass
 class PhaseSecret:
