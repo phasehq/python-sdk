@@ -156,27 +156,3 @@ class Phase:
             app_id=options.app_id,
             path=options.secret_path
         )
-
-    def resolve_references(self, secrets: List[PhaseSecret], env_name: str, app_name: str) -> List[PhaseSecret]:
-        all_secrets = [
-            {
-                'environment': env_name,
-                'application': app_name,
-                'key': secret.key,
-                'value': secret.value,
-                'path': secret.path
-            }
-            for secret in secrets
-        ]
-        
-        for secret in secrets:
-            resolved_value = resolve_all_secrets(
-                secret.value, 
-                all_secrets, 
-                self._phase_io, 
-                app_name, 
-                env_name
-            )
-            secret.value = resolved_value
-        
-        return secrets
