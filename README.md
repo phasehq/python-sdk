@@ -111,21 +111,6 @@ result = phase.delete_secret(delete_options)
 print(f"Delete result: {result}")
 ```
 
-### Resolve Secret References
-
-Resolve references in secret values:
-
-```python
-get_options = GetAllSecretsOptions(
-    env_name="Development",
-    app_name="Your App Name"
-)
-secrets = phase.get_all_secrets(get_options)
-resolved_secrets = phase.resolve_references(secrets, "Development", "Your App Name")
-for secret in resolved_secrets:
-    print(f"Key: {secret.key}, Resolved Value: {secret.value}")
-```
-
 ## Error Handling
 
 The SDK methods may raise exceptions for various error conditions. It's recommended to wrap SDK calls in try-except blocks to handle potential errors:
