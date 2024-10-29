@@ -76,10 +76,59 @@ class PhaseSecret:
     path: str = "/"
     tags: List[str] = field(default_factory=list)
     overridden: bool = False
+    application: Optional[str] = None
+    environment: Optional[str] = None
 
 class Phase:
     def __init__(self, init=True, pss=None, host=None):
         self._phase_io = PhaseIO(init=init, pss=pss, host=host)
+
+    def _resolve_secret_values(self, secrets: List[PhaseSecret], env_name: str, app_name: str) -> List[PhaseSecret]:
+        """
+        Utility function to resolve secret references within secret values.
+        
+        Args:
+            secrets (List[PhaseSecret]): List of secrets to process
+            env_name (str): Environment name for secret resolution
+            app_name (str): Application name for secret resolution
+            
+        Returns:
+            List[PhaseSecret]: List of secrets with resolved values
+        """
+        # Convert PhaseSecret objects to dict format expected by resolve_all_secrets
+        all_secrets = [
+            {
+                'environment': secret.environment or env_name,
+                'path': secret.path,
+                'key': secret.key,
+                'value': secret.value
+            }
+            for secret in secrets
+        ]
+        
+        # Create new list of secrets with resolved values
+        resolved_secrets = []
+        for secret in secrets:
+            resolved_value = resolve_all_secrets(
+                value=secret.value,
+                all_secrets=all_secrets,
+                phase=self._phase_io,
+                current_application_name=secret.application or app_name,
+                current_env_name=secret.environment or env_name
+            )
+            
+            resolved_secrets.append(PhaseSecret(
+                key=secret.key,
+                value=resolved_value,
+                comment=secret.comment,
+                path=secret.path,
+                tags=secret.tags,
+                overridden=secret.overridden,
+                application=secret.application,
+                environment=secret.environment
+            ))
+            
+        return resolved_secrets
 
     def get_secret(self, options: GetSecretOptions) -> Optional[PhaseSecret]:
         secrets = self._phase_io.get(
@@ -92,14 +141,25 @@ class Phase:
         )
         if secrets:
             secret = secrets[0]
-            return PhaseSecret(
+            phase_secret = PhaseSecret(
                 key=secret['key'],
                 value=secret['value'],
                 comment=secret.get('comment', ''),
                 path=secret.get('path', '/'),
                 tags=secret.get('tags', []),
-                overridden=secret.get('overridden', False)
+                overridden=secret.get('overridden', False),
+                application=secret.get('application'),
+                environment=secret.get('environment')
             )
+
+            # Resolve any secret references in the value
+            resolved_secrets = self._resolve_secret_values(
+                [phase_secret], 
+                options.env_name,
+                secret.get('application', options.app_name)
+            )
+            
+            return resolved_secrets[0] if resolved_secrets else None
         return None
 
     def get_all_secrets(self, options: GetAllSecretsOptions) -> List[PhaseSecret]:
@@ -110,17 +170,33 @@ class Phase:
             tag=options.tag,
             path=options.secret_path
         )
-        return [
+        
+        if not secrets:
+            return []
+
+        # Get the application name from the first secret
+        app_name = secrets[0].get('application', options.app_name)
+        
+        phase_secrets = [
             PhaseSecret(
                 key=secret['key'],
                 value=secret['value'],
                 comment=secret.get('comment', ''),
                 path=secret.get('path', '/'),
                 tags=secret.get('tags', []),
-                overridden=secret.get('overridden', False)
+                overridden=secret.get('overridden', False),
+                application=secret.get('application'),
+                environment=secret.get('environment')
             )
             for secret in secrets
         ]
+        
+        # Resolve any secret references in the values
+        return self._resolve_secret_values(
+            phase_secrets,
+            options.env_name,
+            app_name
+        )
 
     def create_secrets(self, options: CreateSecretsOptions) -> str:
         # Convert the list of dictionaries to a list of tuples
