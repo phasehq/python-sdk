@@ -1,23 +1,23 @@
-import requests
-from typing import Tuple
-from typing import List, Dict
 from dataclasses import dataclass
-from .network import (
-    fetch_phase_user,
-    fetch_app_key,
-    fetch_wrapped_key_share,
-    fetch_phase_secrets,
-    create_phase_secrets,
-    update_phase_secrets,
-    delete_phase_secrets
-)
+from typing import Dict, List, Optional, Tuple
+
+import requests
 from nacl.bindings import (
-    crypto_kx_server_session_keys, 
+    crypto_kx_server_session_keys,
 )
+
+from .const import pss_service_pattern, pss_user_pattern
 from .crypto import CryptoUtils
-from .const import __ph_version__, pss_user_pattern, pss_service_pattern
-from .misc import phase_get_context, normalize_tag, tag_matches
-from .secret_referencing import resolve_all_secrets
+from .misc import phase_get_context, tag_matches
+from .network import (
+    create_phase_secrets,
+    delete_phase_secrets,
+    fetch_app_key,
+    fetch_phase_secrets,
+    fetch_phase_user,
+    fetch_wrapped_key_share,
+    update_phase_secrets,
+)
 
 
 @dataclass
@@ -85,8 +85,8 @@ class Phase:
 
             return "Success"
 
-        except ValueError as err:
-            raise ValueError(f"Invalid Phase credentials")
+        except ValueError:
+            raise ValueError("Invalid Phase credentials")
 
 
     def init(self):
@@ -95,12 +95,12 @@ class Phase:
         # Ensure the response is OK
         if response.status_code != 200:
             raise ValueError(f"Request failed with status code {response.status_code}: {response.text}")
-        
+
         # Parse and return the JSON content
         return response.json()
 
 
-    def create(self, key_value_pairs: List[Tuple[str, str]], env_name: str, app_name: str = None, app_id: str = None, path: str = '/', override_value: str = None) -> requests.Response:
+    def create(self, key_value_pairs: List[Tuple[str, str]], env_name: str, app_name: Optional[str] = None, app_id: Optional[str] = None, path: str = '/', override_value: Optional[str] = None) -> requests.Response:
         """
         Create secrets in Phase KMS with support for specifying a path and overrides.
 
@@ -156,7 +156,7 @@ class Phase:
         return create_phase_secrets(self._token_type, self._app_secret.app_token, env_id, secrets, self._api_host)
 
 
-    def get(self, env_name: str, keys: List[str] = None, app_name: str = None, app_id: str = None, tag: str = None, path: str = '') -> List[Dict]:
+    def get(self, env_name: str, keys: List[str] = None, app_name: Optional[str] = None, app_id:  Optional[str] = None, tag: Optional[str] = None, path: str = '') -> List[Dict]:
         """
         Get secrets from Phase KMS based on key and environment, with support for personal overrides,
         optional tag matching, decrypting comments, and now including path support and key digest optimization.
@@ -172,7 +172,7 @@ class Phase:
         Returns:
             List[Dict]: A list of dictionaries for all secrets in the environment that match the criteria, including their paths.
         """
-        
+
         user_response = fetch_phase_user(self._token_type, self._app_secret.app_token, self._api_host)
         if user_response.status_code != 200:
             raise ValueError(f"Request failed with status code {user_response.status_code}: {user_response.text}")
@@ -228,7 +228,7 @@ class Phase:
                 "comment": decrypted_comment,
                 "path": secret.get("path", "/"),
                 "application": app_name,
-                "environment": env_name 
+                "environment": env_name
             }
 
             # Only add the secret to results if the requested keys are not specified or the decrypted key is one of the requested keys.
@@ -238,10 +238,10 @@ class Phase:
         return results
 
 
-    def update(self, env_name: str, key: str, value: str = None, app_name: str = None, app_id: str = None, source_path: str = '', destination_path: str = None, override: bool = False, toggle_override: bool = False) -> str:
+    def update(self, env_name: str, key: str, value: Optional[str] = None, app_name: Optional[str] = None, app_id: Optional[str] = None, source_path: str = '', destination_path: Optional[str] = None, override: bool = False, toggle_override: bool = False) -> str:
         """
         Update a secret in Phase KMS based on key and environment, with support for source and destination paths.
-        
+
         Args:
             env_name (str): The name (or partial name) of the desired environment.
             key (str): The key for which to update the secret value.
@@ -251,12 +251,12 @@ class Phase:
             source_path (str, optional): The current path of the secret. Defaults to root path '/'.
             destination_path (str, optional): The new path for the secret, if changing its location.
             override (bool, optional): Whether to update an overridden secret value. Defaults to False.
-            toggle_override (bool, optional): Whether to toggle the override state. Defaults to False.
-                
+            toggle_override (bool, optional): Whether to toggle the override state between active and inactive. Defaults to False.
+
         Returns:
             str: A message indicating the outcome of the update operation.
         """
-        
+
         user_response = fetch_phase_user(self._token_type, self._app_secret.app_token, self._api_host)
         if user_response.status_code != 200:
             raise ValueError(f"Request failed with status code {user_response.status_code}: {user_response.text}")
@@ -309,10 +309,10 @@ class Phase:
             # This prevents toggling an override on a secret that doesn't have one.
             if "override" not in matching_secret or matching_secret["override"] is None:
                 raise OverrideNotFoundException(key)
-            
+
             # Retrieve the current override state. If the override is not active, it defaults to False.
             current_override_state = matching_secret["override"].get("is_active", False)
-            
+
             # Prepare the payload to update the override status. The value of the override remains unchanged,
             # but the isActive status is toggled.
             secret_update_payload["override"] = {
@@ -346,21 +346,21 @@ class Phase:
             return f"Error: Failed to update secret. HTTP Status Code: {response.status_code}"
 
 
-    def delete(self, env_name: str, keys_to_delete: List[str], app_name: str = None, app_id: str = None, path: str = None) -> List[str]:
+    def delete(self, env_name: str, keys_to_delete: List[str], app_name: Optional[str] = None, app_id: Optional[str] = None, path: Optional[str] = None) -> List[str]:
         """
         Delete secrets in Phase KMS based on keys and environment, with optional path support.
-        
+
         Args:
             env_name (str): The name (or partial name) of the desired environment.
             keys_to_delete (List[str]): The keys for which to delete the secrets.
             app_name (str, optional): The name of the desired application.
             app_id (str, optional): The ID of the application. Takes precedence over app_name if both are provided.
             path (str, optional): The path within which to delete the secrets. If specified, only deletes secrets within this path.
-                
+
         Returns:
             List[str]: A list of keys that were not found and could not be deleted.
         """
-        
+
         user_response = fetch_phase_user(self._token_type, self._app_secret.app_token, self._api_host)
         if user_response.status_code != 200:
             raise ValueError(f"Request failed with status code {user_response.status_code}: {user_response.text}")
@@ -381,7 +381,7 @@ class Phase:
         keys_not_found = []
         secrets_response = fetch_phase_secrets(self._token_type, self._app_secret.app_token, env_id, self._api_host, path=path)
         secrets_data = secrets_response.json()
-            
+
         for key in keys_to_delete:
             found = False
             for secret in secrets_data:
@@ -400,7 +400,7 @@ class Phase:
             if delete_response.status_code != 200:
                 raise ValueError(f"Failed to delete secrets. Status code: {delete_response.status_code}")
         return keys_not_found
-    
+
 
     def decrypt(self, phase_ciphertext) -> str | None:
         """
