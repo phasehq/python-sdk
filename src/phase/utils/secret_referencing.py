@@ -97,7 +97,8 @@ def resolve_secret_reference(ref: str, secrets_dict: Dict[str, Dict[str, Dict[st
     Returns:
         str: The resolved secret value or the original reference if not resolved.
     """
-    app_name = current_application_name
+    original_ref = ref  # Store the original reference
+    app_name = current_application_name 
     env_name = current_env_name
     path = "/"  # Default root path
     key_name = ref
@@ -134,8 +135,8 @@ def resolve_secret_reference(ref: str, secrets_dict: Dict[str, Dict[str, Dict[st
     except EnvironmentNotFoundException:
         pass
 
-    # Return the reference as is if not resolved
-    return f"${{{ref}}}"
+    # Return the original secret value as is if not resolved
+    return f"${{{original_ref}}}"
 
 
 def resolve_all_secrets(value: str, all_secrets: List[Dict[str, str]], phase: 'Phase', current_application_name: str, current_env_name: str) -> str:
