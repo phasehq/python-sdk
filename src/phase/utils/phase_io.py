@@ -51,7 +51,7 @@ class Phase:
 
         # Check if app_secret is None
         if app_secret is None:
-            raise ValueError("Phase token (pss) cannot be None")
+            raise ValueError("Phase token (pss) is missing")
             
         # Determine the type of the token (service token or user token)
         self.is_service_token = pss_service_pattern.match(app_secret) is not None
